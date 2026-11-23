@@ -512,6 +512,26 @@ function chargeSummary(charge: Charge): string {
   ]);
 }
 
+function chargeItemBlocks(charge: Charge): NotionBlock[] {
+  const summary = chargeSummary(charge);
+  const filingUrl = charge.transactions?.find(
+    (transaction) => transaction.publicFilingUrl,
+  )?.publicFilingUrl;
+
+  if (!filingUrl) {
+    return summary ? [bullet(summary)] : [];
+  }
+
+  const content: NotionRichText[] = [];
+
+  if (summary) {
+    content.push(richText(`${summary}, `));
+  }
+
+  content.push(richTextWithLink("filing", filingUrl));
+  return [bullet(content)];
+}
+
 function chargesSummary(brief: CompanyBrief): string {
   const section = brief.charges;
   const parts = [
@@ -548,6 +568,7 @@ function filingItemBlocks(filing: Filing): NotionBlock[] {
     filing.description,
     typeAndCategory === "" ? undefined : typeAndCategory,
     pages,
+    filing.paperFiled === true ? "paper" : undefined,
   ]);
 
   if (filing.publicUrl) {
@@ -725,10 +746,7 @@ function chargeBlocks(brief: CompanyBrief): NotionBlock[] {
     blocks.push(heading2("Outstanding/other"));
 
     for (const charge of brief.charges.outstanding.slice(0, 50)) {
-      const summary = chargeSummary(charge);
-      if (summary) {
-        blocks.push(bullet(summary));
-      }
+      blocks.push(...chargeItemBlocks(charge));
     }
 
     if (brief.charges.outstanding.length > 50) {
@@ -748,10 +766,7 @@ function chargeBlocks(brief: CompanyBrief): NotionBlock[] {
     blocks.push(paragraph(`${formatCount(satisfiedTotal)} fully satisfied.`));
 
     for (const charge of brief.charges.satisfiedExamples.slice(0, 5)) {
-      const summary = chargeSummary(charge);
-      if (summary) {
-        blocks.push(bullet(summary));
-      }
+      blocks.push(...chargeItemBlocks(charge));
     }
 
     if (satisfiedTotal > brief.charges.satisfiedExamples.length) {
@@ -986,10 +1001,16 @@ export function buildPageContent(brief: CompanyBrief): PageContent {
   );
   const sections: PageSection[] = [];
 
+  const color = calloutColor(brief);
+  const text =
+    color === "yellow_background"
+      ? `${calloutText(brief)} Some sections are truncated or unavailable; see Sources and gaps.`
+      : calloutText(brief);
+
   sections.push({
     key: "headline",
     blocks: [
-      callout(calloutText(brief), calloutColor(brief)),
+      callout(text, color),
       paragraph(headlineCounts(brief)),
     ],
   });
@@ -1022,15 +1043,15 @@ export function buildPageContent(brief: CompanyBrief): PageContent {
 
   const riskLabels = riskFlagLabels(brief.company.flags);
 
-  if (riskLabels.length > 0) {
-    sections.push({
-      key: "risk_flags",
-      blocks: [
-        heading2("Risk flags"),
-        ...riskLabels.map((label) => bullet(label)),
-      ],
-    });
-  }
+  sections.push({
+    key: "risk_flags",
+    blocks: [
+      heading2("Risk flags"),
+      ...(riskLabels.length > 0
+        ? riskLabels.map((label) => bullet(label))
+        : [bullet("No profile risk flags set.")]),
+    ],
+  });
 
   sections.push({
     key: "insolvency",
