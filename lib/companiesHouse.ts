@@ -242,6 +242,11 @@ export interface PagedResult<T> {
   total: number;
   pages: number;
   truncated: boolean;
+  failure?: {
+    status: number;
+    error: string;
+    body?: string;
+  };
 }
 
 export type ChPageFetcher<T> = (
@@ -484,6 +489,7 @@ export async function paginate<T>(
   totalField: "total_results" | "total_count",
   cap: number,
   pageSize = 50,
+  firstPage?: ChResult<ChListPage<T>>,
 ): Promise<ChResult<PagedResult<T>>> {
   if (cap <= 0) {
     return {
@@ -507,16 +513,73 @@ export async function paginate<T>(
   let total: number | undefined;
   let lastStatus = 0;
 
+  if (firstPage !== undefined) {
+    if (!firstPage.ok) {
+      return firstPage;
+    }
+
+    const firstItems = Array.isArray(firstPage.data.items)
+      ? firstPage.data.items
+      : [];
+    const firstTotal = firstPage.data[totalField];
+
+    if (typeof firstTotal !== "number" || !Number.isFinite(firstTotal)) {
+      return {
+        ok: false,
+        status: firstPage.status,
+        error: `Missing ${totalField} in list response`,
+      };
+    }
+
+    items.push(...firstItems);
+    startIndex = firstItems.length;
+    pages = 1;
+    total = firstTotal;
+    lastStatus = firstPage.status;
+
+    if (
+      firstItems.length === 0 ||
+      startIndex >= firstTotal ||
+      items.length >= cap
+    ) {
+      const cappedItems = items.slice(0, cap);
+      return {
+        ok: true,
+        status: lastStatus,
+        data: {
+          items: cappedItems,
+          total: firstTotal,
+          pages,
+          truncated: firstTotal > cappedItems.length,
+        },
+      };
+    }
+  }
+
   while (items.length < cap) {
     const page = await fetchPage(startIndex, pageSize);
     pages += 1;
 
     if (!page.ok) {
+      if (pages === 1) {
+        return page;
+      }
+
+      const cappedItems = items.slice(0, cap);
       return {
-        ok: false,
-        status: page.status,
-        error: page.error,
-        body: page.body,
+        ok: true,
+        status: lastStatus,
+        data: {
+          items: cappedItems,
+          total: total ?? 0,
+          pages,
+          truncated: true,
+          failure: {
+            status: page.status,
+            error: page.error,
+            body: page.body,
+          },
+        },
       };
     }
 
@@ -557,15 +620,16 @@ export async function paginate<T>(
   }
 
   const cappedItems = items.slice(0, cap);
+  const resolvedTotal = total ?? 0;
 
   return {
     ok: true,
     status: lastStatus,
     data: {
       items: cappedItems,
-      total: total ?? 0,
+      total: resolvedTotal,
       pages,
-      truncated: (total ?? 0) > cappedItems.length,
+      truncated: resolvedTotal > cappedItems.length,
     },
   };
 }
