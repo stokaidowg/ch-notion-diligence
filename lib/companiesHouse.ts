@@ -10,6 +10,7 @@
 const CH_API_BASE = "https://api.company-information.service.gov.uk";
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_ATTEMPTS = 3;
+const MAX_RETRY_AFTER_MS = 3_000;
 
 export type ChResult<T> =
   | { ok: true; status: number; data: T }
@@ -378,7 +379,10 @@ export async function chGet<T>(path: string): Promise<ChResult<T>> {
       }
 
       const retryAfter = parseRetryAfter(response.headers.get("retry-after"));
-      const delay = retryAfter === undefined ? backoffDelay(attempt) : retryAfter;
+      const delay =
+        retryAfter === undefined
+          ? backoffDelay(attempt)
+          : Math.min(retryAfter, MAX_RETRY_AFTER_MS);
       await sleep(delay);
     } catch (error) {
       return {
