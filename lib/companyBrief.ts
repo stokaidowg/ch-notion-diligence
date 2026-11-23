@@ -615,6 +615,20 @@ function buildOfficersSection(
     });
   }
 
+  const truncated = totalResults !== undefined && fetched < totalResults;
+
+  if (
+    !truncated &&
+    data.active_count !== undefined &&
+    active.length !== data.active_count
+  ) {
+    warnings.push({
+      section: "officers",
+      code: "officers_active_count_mismatch",
+      message: `Officers response active_count=${data.active_count}, but ${active.length} active officers were present in items.`,
+    });
+  }
+
   return {
     status: items.length === 0 && (totalResults ?? 0) === 0 ? "none" : "ok",
     httpStatus: asHttpStatus(result.status),
@@ -625,7 +639,7 @@ function buildOfficersSection(
     fetched,
     active,
     recentResignations,
-    truncated: totalResults !== undefined && fetched < totalResults,
+    truncated,
   };
 }
 
@@ -710,7 +724,7 @@ function buildPscSection(
     });
 
     return {
-      status: "none",
+      status: "unavailable",
       httpStatus: asHttpStatus(result.status),
       activeCount: data.active_count,
       ceasedCount: data.ceased_count,
@@ -732,7 +746,7 @@ function buildPscSection(
     });
 
     return {
-      status: "none",
+      status: "unavailable",
       httpStatus: asHttpStatus(result.status),
       activeCount: data.active_count,
       ceasedCount: data.ceased_count,
