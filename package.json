@@ -1,0 +1,18 @@
+{
+  "name": "ch-notion-diligence",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Companies House diligence snapshot for Notion",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "npx vercel dev",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@vercel/node": "^32.0.0",
+    "typescript": "^5.9.3"
+  }
+}

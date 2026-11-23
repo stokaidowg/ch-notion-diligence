@@ -1,0 +1,13 @@
+node_modules/
+.vercel/
+.env
+.env.*
+!.env.example
+dist/
+*.log
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+
+# Local probe output contains workspace and page identifiers.
+probe-output.txt
