@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CompanyBrief</title>
+  <meta name="description" content="Enter a UK company number and create a Notion diligence page.">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f6f3;
+      --surface: #ffffff;
+      --text: #171714;
+      --muted: #63635c;
+      --border: #d9d9d1;
+      --accent: #1f5eff;
+      --accent-ink: #ffffff;
+      --ok: #157f3b;
+      --warn: #8a5a00;
+      --error: #b42318;
+      --warn-bg: #fff6df;
+      --error-bg: #fff0ee;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111110;
+        --surface: #1a1a18;
+        --text: #f1f1eb;
+        --muted: #b4b4aa;
+        --border: #34342f;
+        --accent: #8fb0ff;
+        --accent-ink: #0c1a3a;
+        --ok: #75d99a;
+        --warn: #f3c86a;
+        --error: #ff9b91;
+        --warn-bg: #2d2413;
+        --error-bg: #311a17;
+      }
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        Helvetica, Arial, sans-serif;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      width: calc(100% - 36px);
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 52px 0 40px;
+    }
+
+    .intro h1 {
+      margin: 0 0 10px;
+      font-size: clamp(2.1rem, 6vw, 2.9rem);
+      line-height: 1.05;
+      letter-spacing: -0.035em;
+    }
+
+    .lede {
+      margin: 0;
+      max-width: 66ch;
+      color: var(--muted);
+      font-size: 1.04rem;
+    }
+
+    form {
+      margin-top: 30px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .input-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    input {
+      flex: 1 1 220px;
+      min-width: 0;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+      letter-spacing: 0.02em;
+    }
+
+    input::placeholder {
+      color: var(--muted);
+      opacity: 0.8;
+    }
+
+    input:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      border-color: var(--accent);
+    }
+
+    button,
+    .page-link {
+      font: inherit;
+      cursor: pointer;
+    }
+
+    #submit {
+      flex: 0 0 auto;
+      padding: 12px 22px;
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-weight: 700;
+    }
+
+    #submit:hover:not(:disabled) {
+      filter: brightness(1.05);
+    }
+
+    #submit:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    .try-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .try {
+      padding: 7px 11px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .try:hover {
+      color: var(--text);
+      border-color: var(--muted);
+    }
+
+    .panel {
+      margin-top: 24px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+    }
+
+    .progress {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px 18px;
+    }
+
+    .progress-text {
+      margin: 0;
+    }
+
+    .elapsed {
+      margin: 0;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .success {
+      margin: 0 0 12px;
+      color: var(--ok);
+      font-weight: 700;
+    }
+
+    .page-link {
+      display: inline-block;
+      padding: 12px 18px;
+      border-radius: 10px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .page-link:hover {
+      text-decoration: underline;
+    }
+
+    .error {
+      margin: 0;
+      color: var(--error);
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .meta {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .panel.is-error {
+      border-color: var(--error);
+      background: var(--error-bg);
+    }
+
+    .warnings {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .warnings h2 {
+      margin: 0 0 8px;
+      font-size: 0.98rem;
+    }
+
+    .warnings ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .warnings li {
+      margin: 6px 0;
+      overflow-wrap: anywhere;
+    }
+
+    .warn-section {
+      display: inline-block;
+      margin-right: 6px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: var(--warn-bg);
+      color: var(--warn);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .warn-status {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    details {
+      margin-top: 30px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    summary:hover {
+      color: var(--accent);
+    }
+
+    .trace-table {
+      width: 100%;
+      margin-top: 12px;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 0.85rem;
+    }
+
+    .trace-table th,
+    .trace-table td {
+      padding: 7px 8px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
+
+    .trace-table th:nth-child(2),
+    .trace-table td:nth-child(2) {
+      width: 24%;
+    }
+
+    .trace-table th:nth-child(3),
+    .trace-table td:nth-child(3) {
+      width: 20%;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .trace-table thead th {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .status-ok {
+      color: var(--ok);
+      font-weight: 700;
+    }
+
+    .status-warn {
+      color: var(--warn);
+      font-weight: 700;
+    }
+
+    .status-error {
+      color: var(--error);
+      font-weight: 700;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    footer {
+      margin-top: 38px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 420px) {
+      .page {
+        padding-top: 34px;
+      }
+
+      #submit {
+        flex: 1 1 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="intro">
+      <h1>CompanyBrief</h1>
+      <p class="lede">Enter a UK company number. It reads Companies House and writes a diligence page to Notion.</p>
+    </header>
+
+    <form id="brief-form" novalidate>
+      <label for="company-number">Company number</label>
+      <div class="input-row">
+        <input
+          id="company-number"
+          name="number"
+          type="text"
+          inputmode="text"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          placeholder="00445790"
+        >
+        <button id="submit" type="submit">Generate</button>
+      </div>
+      <div class="try-row" aria-label="Example companies">
+        <button type="button" class="try" data-number="00445790">Tesco PLC (00445790)</button>
+        <button type="button" class="try" data-number="14604577">Anthropic Limited (14604577)</button>
+      </div>
+    </form>
+
+    <div id="progress" class="panel progress" hidden>
+      <p class="progress-text" role="status">Reading Companies House and writing to Notion. This takes a few seconds.</p>
+      <p class="elapsed">Elapsed <span id="elapsed">0s</span></p>
+    </div>
+
+    <section id="result" class="panel" aria-live="polite" hidden></section>
+
+    <details id="trace-details">
+      <summary>Trace</summary>
+      <div id="trace-body">
+        <p class="muted">No trace yet.</p>
+      </div>
+    </details>
+
+    <footer>
+      Real requests to the Companies House API and the Notion API. A snapshot, not advice.
+    </footer>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const form = document.getElementById("brief-form");
+      const input = document.getElementById("company-number");
+      const submitButton = document.getElementById("submit");
+      const progress = document.getElementById("progress");
+      const elapsed = document.getElementById("elapsed");
+      const resultPanel = document.getElementById("result");
+      const traceBody = document.getElementById("trace-body");
+
+      let loading = false;
+      let timerId = null;
+      let startedAt = 0;
+
+      function startTimer() {
+        startedAt = Date.now();
+        elapsed.textContent = "0s";
+        timerId = window.setInterval(() => {
+          const seconds = Math.floor((Date.now() - startedAt) / 1000);
+          elapsed.textContent = `${seconds}s`;
+        }, 250);
+      }
+
+      function stopTimer() {
+        if (timerId !== null) {
+          window.clearInterval(timerId);
+          timerId = null;
+        }
+      }
+
+      function setTraceMessage(message) {
+        traceBody.replaceChildren();
+        const note = document.createElement("p");
+        note.className = "muted";
+        note.textContent = message;
+        traceBody.append(note);
+      }
+
+      function fallbackError(httpStatus) {
+        switch (httpStatus) {
+          case 0:
+            return "Could not reach the server.";
+          case 400:
+            return "Enter a valid company number.";
+          case 404:
+            return "Company not found.";
+          case 502:
+            return "The request to Companies House or Notion failed.";
+          case 500:
+            return "The server could not complete the request.";
+          default:
+            return `Request failed (HTTP ${httpStatus}).`;
+        }
+      }
+
+      function renderError(body, httpStatus, overrideMessage) {
+        const message =
+          overrideMessage ||
+          (body && typeof body.error === "string" && body.error.trim() !== ""
+            ? body.error
+            : fallbackError(httpStatus));
+
+        resultPanel.replaceChildren();
+
+        const error = document.createElement("p");
+        error.className = "error";
+        error.textContent = message;
+        resultPanel.append(error);
+
+        if (body && typeof body.status === "number") {
+          const status = document.createElement("p");
+          status.className = "meta";
+          status.textContent = `Upstream status: ${body.status}`;
+          resultPanel.append(status);
+        }
+
+        resultPanel.classList.add("is-error");
+        resultPanel.hidden = false;
+      }
+
+      function renderSuccess(body) {
+        resultPanel.replaceChildren();
+        resultPanel.classList.remove("is-error");
+
+        const success = document.createElement("p");
+        success.className = "success";
+        success.textContent = "Page created.";
+        resultPanel.append(success);
+
+        let safeUrl = "";
+
+        if (typeof body.url === "string" && body.url.trim() !== "") {
+          try {
+            const parsed = new URL(body.url);
+            if (parsed.protocol === "https:") {
+              safeUrl = parsed.href;
+            }
+          } catch {
+            safeUrl = "";
+          }
+        }
+
+        if (safeUrl) {
+          const link = document.createElement("a");
+          link.className = "page-link";
+          link.href = safeUrl;
+          link.target = "_blank";
+          link.rel = "noopener";
+          link.textContent = "Open the Notion page";
+          resultPanel.append(link);
+        } else {
+          const note = document.createElement("p");
+          note.className = "meta";
+          note.textContent = "The page was created but no valid Notion URL was returned.";
+          resultPanel.append(note);
+        }
+
+        const warnings = Array.isArray(body.warnings) ? body.warnings : [];
+
+        if (warnings.length > 0) {
+          const wrap = document.createElement("div");
+          wrap.className = "warnings";
+
+          const heading = document.createElement("h2");
+          heading.textContent = "Warnings";
+          wrap.append(heading);
+
+          const list = document.createElement("ul");
+
+          for (const warning of warnings) {
+            const item = document.createElement("li");
+            const entry =
+              warning && typeof warning === "object" && !Array.isArray(warning)
+                ? warning
+                : null;
+            const section =
+              entry && typeof entry.section === "string"
+                ? entry.section
+                : "unknown";
+
+            const badge = document.createElement("span");
+            badge.className = "warn-section";
+            badge.textContent = section;
+            item.append(badge);
+
+            let detail =
+              entry && typeof entry.message === "string" ? entry.message : "";
+
+            if (detail === "" && entry && typeof entry.code === "string") {
+              detail = entry.code;
+            }
+
+            if (detail !== "") {
+              item.append(document.createTextNode(detail));
+            }
+
+            if (entry && typeof entry.httpStatus === "number") {
+              const status = document.createElement("span");
+              status.className = "warn-status";
+              status.textContent = ` (HTTP ${entry.httpStatus})`;
+              item.append(status);
+            }
+
+            list.append(item);
+          }
+
+          wrap.append(list);
+          resultPanel.append(wrap);
+        }
+
+        resultPanel.hidden = false;
+      }
+
+      function renderTrace(trace) {
+        traceBody.replaceChildren();
+
+        if (!Array.isArray(trace) || trace.length === 0) {
+          const note = document.createElement("p");
+          note.className = "muted";
+          note.textContent = "No trace returned.";
+          traceBody.append(note);
+          return;
+        }
+
+        const table = document.createElement("table");
+        table.className = "trace-table";
+
+        const caption = document.createElement("caption");
+        caption.className = "visually-hidden";
+        caption.textContent = "Request trace";
+        table.append(caption);
+
+        const head = document.createElement("thead");
+        const headRow = document.createElement("tr");
+
+        for (const label of ["Section", "Status", "ms"]) {
+          const cell = document.createElement("th");
+          cell.scope = "col";
+          cell.textContent = label;
+          headRow.append(cell);
+        }
+
+        head.append(headRow);
+        table.append(head);
+
+        const body = document.createElement("tbody");
+
+        for (const item of trace) {
+          const entry =
+            item && typeof item === "object" && !Array.isArray(item)
+              ? item
+              : null;
+
+          const row = document.createElement("tr");
+
+          const section = document.createElement("td");
+          section.textContent =
+            entry && typeof entry.section === "string"
+              ? entry.section
+              : "unknown";
+
+          const status = document.createElement("td");
+          const statusValue =
+            entry && typeof entry.status === "number" ? entry.status : 0;
+          status.textContent = String(statusValue);
+          status.className =
+            statusValue === 200
+              ? "status-ok"
+              : statusValue === 404
+                ? "status-warn"
+                : "status-error";
+
+          const ms = document.createElement("td");
+          const msValue =
+            entry && typeof entry.ms === "number" ? Math.round(entry.ms) : 0;
+          ms.textContent = String(msValue);
+
+          row.append(section, status, ms);
+          body.append(row);
+        }
+
+        table.append(body);
+        traceBody.append(table);
+      }
+
+      async function submitBrief(number) {
+        const response = await fetch(
+          `/api/diligence?number=${encodeURIComponent(number)}`,
+          { headers: { Accept: "application/json" }, cache: "no-store" }
+        );
+
+        const text = await response.text();
+        let parsed = null;
+
+        if (text && text.trim() !== "") {
+          try {
+            parsed = JSON.parse(text);
+          } catch {
+            parsed = null;
+          }
+        }
+
+        const body =
+          parsed && typeof parsed === "object" && !Array.isArray(parsed)
+            ? parsed
+            : null;
+
+        if (response.ok) {
+          if (body) {
+            renderSuccess(body);
+          } else {
+            renderError(
+              null,
+              response.status,
+              "The server returned an unreadable response."
+            );
+          }
+        } else {
+          renderError(body, response.status);
+        }
+
+        renderTrace(body && Array.isArray(body.trace) ? body.trace : null);
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        if (loading) {
+          return;
+        }
+
+        loading = true;
+        submitButton.disabled = true;
+        form.setAttribute("aria-busy", "true");
+        resultPanel.hidden = true;
+        resultPanel.classList.remove("is-error");
+        resultPanel.replaceChildren();
+        setTraceMessage("Waiting for response.");
+        progress.hidden = false;
+        startTimer();
+
+        try {
+          await submitBrief(input.value.trim());
+        } catch {
+          renderError(null, 0);
+          renderTrace(null);
+        } finally {
+          stopTimer();
+          progress.hidden = true;
+          loading = false;
+          submitButton.disabled = false;
+          form.removeAttribute("aria-busy");
+        }
+      });
+
+      for (const button of document.querySelectorAll("[data-number]")) {
+        button.addEventListener("click", () => {
+          input.value = button.getAttribute("data-number") || "";
+          input.focus();
+        });
+      }
+
+      input.focus();
+    })();
+  </script>
+</body>
+</html>
