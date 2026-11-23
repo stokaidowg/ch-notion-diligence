@@ -166,6 +166,12 @@
       border-color: var(--muted);
     }
 
+    .hint {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
     .panel {
       margin-top: 24px;
       padding: 18px;
@@ -268,6 +274,66 @@
     .warn-status {
       color: var(--muted);
       font-size: 0.85rem;
+    }
+
+    .matches-heading {
+      margin: 0 0 10px;
+      font-size: 1rem;
+    }
+
+    .matches {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .matches li {
+      margin: 0;
+    }
+
+    .match {
+      display: block;
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+    }
+
+    .match:hover:not(:disabled) {
+      border-color: var(--accent);
+    }
+
+    .match:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .match-name {
+      display: block;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .match-meta {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      overflow-wrap: anywhere;
+    }
+
+    .match-address,
+    .match-previous {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      overflow-wrap: anywhere;
     }
 
     details {
@@ -377,11 +443,11 @@
   <main class="page">
     <header class="intro">
       <h1>CompanyBrief</h1>
-      <p class="lede">Enter a UK company number. It reads Companies House and writes a diligence page to Notion.</p>
+      <p class="lede">Enter a UK company number or name. It reads Companies House and writes a diligence page to Notion.</p>
     </header>
 
     <form id="brief-form" novalidate>
-      <label for="company-number">Company number</label>
+      <label for="company-number">Company number or name</label>
       <div class="input-row">
         <input
           id="company-number"
@@ -391,10 +457,12 @@
           autocomplete="off"
           autocapitalize="characters"
           spellcheck="false"
-          placeholder="00445790"
+          placeholder="00445790 or Tesco"
+          aria-describedby="input-hint"
         >
         <button id="submit" type="submit">Generate</button>
       </div>
+      <p class="hint" id="input-hint">Numbers are used directly; anything else searches Companies House.</p>
       <div class="try-row" aria-label="Example companies">
         <button type="button" class="try" data-number="00445790">Tesco PLC (00445790)</button>
         <button type="button" class="try" data-number="14604577">Anthropic Limited (14604577)</button>
@@ -402,7 +470,7 @@
     </form>
 
     <div id="progress" class="panel progress" hidden>
-      <p class="progress-text" role="status">Reading Companies House and writing to Notion. This takes a few seconds.</p>
+      <p class="progress-text" role="status" id="progress-text">Reading Companies House and writing to Notion. This takes a few seconds.</p>
       <p class="elapsed">Elapsed <span id="elapsed">0s</span></p>
     </div>
 
@@ -428,6 +496,7 @@
       const input = document.getElementById("company-number");
       const submitButton = document.getElementById("submit");
       const progress = document.getElementById("progress");
+      const progressText = document.getElementById("progress-text");
       const elapsed = document.getElementById("elapsed");
       const resultPanel = document.getElementById("result");
       const traceBody = document.getElementById("trace-body");
@@ -667,7 +736,7 @@
         traceBody.append(table);
       }
 
-      async function submitBrief(number) {
+      async function runDiligence(number) {
         const response = await fetch(
           `/api/diligence?number=${encodeURIComponent(number)}`,
           { headers: { Accept: "application/json" }, cache: "no-store" }
@@ -706,9 +775,141 @@
         renderTrace(body && Array.isArray(body.trace) ? body.trace : null);
       }
 
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
+      async function runSearch(query) {
+        const response = await fetch(
+          `/api/search?q=${encodeURIComponent(query)}`,
+          { headers: { Accept: "application/json" }, cache: "no-store" }
+        );
 
+        const text = await response.text();
+        let parsed = null;
+
+        if (text && text.trim() !== "") {
+          try {
+            parsed = JSON.parse(text);
+          } catch {
+            parsed = null;
+          }
+        }
+
+        const body =
+          parsed && typeof parsed === "object" && !Array.isArray(parsed)
+            ? parsed
+            : null;
+
+        if (!response.ok) {
+          renderError(body, response.status);
+          return;
+        }
+
+        if (!body) {
+          renderError(
+            null,
+            response.status,
+            "The server returned an unreadable response."
+          );
+          return;
+        }
+
+        renderMatches(Array.isArray(body.items) ? body.items : []);
+      }
+
+      function renderMatches(items) {
+        resultPanel.replaceChildren();
+        resultPanel.classList.remove("is-error");
+
+        if (items.length === 0) {
+          const empty = document.createElement("p");
+          empty.className = "meta";
+          empty.textContent = "No companies found. Try a different name.";
+          resultPanel.append(empty);
+          resultPanel.hidden = false;
+          return;
+        }
+
+        const heading = document.createElement("h2");
+        heading.className = "matches-heading";
+        heading.textContent = "Matches";
+        resultPanel.append(heading);
+
+        const list = document.createElement("ul");
+        list.className = "matches";
+
+        for (const item of items) {
+          const entry =
+            item && typeof item === "object" && !Array.isArray(item)
+              ? item
+              : null;
+
+          const number =
+            entry && typeof entry.number === "string" ? entry.number : "";
+          const name =
+            entry && typeof entry.name === "string" ? entry.name : "";
+          const status =
+            entry && typeof entry.status === "string" ? entry.status : "";
+          const type =
+            entry && typeof entry.type === "string" ? entry.type : "";
+          const address =
+            entry && typeof entry.address === "string" ? entry.address : "";
+          const previousName =
+            entry && typeof entry.previousName === "string"
+              ? entry.previousName
+              : "";
+
+          const row = document.createElement("li");
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "match";
+
+          if (number) {
+            button.addEventListener("click", () => {
+              input.value = number;
+              void startRequest("diligence", number);
+            });
+          } else {
+            button.disabled = true;
+          }
+
+          const nameLine = document.createElement("span");
+          nameLine.className = "match-name";
+          nameLine.textContent = name || number || "Unnamed company";
+          button.append(nameLine);
+
+          const metaParts = [];
+          if (number) metaParts.push(number);
+          if (status) metaParts.push(status);
+          if (type) metaParts.push(type);
+
+          if (metaParts.length > 0) {
+            const meta = document.createElement("span");
+            meta.className = "match-meta";
+            meta.textContent = metaParts.join(", ");
+            button.append(meta);
+          }
+
+          if (address.trim() !== "") {
+            const addressLine = document.createElement("span");
+            addressLine.className = "match-address";
+            addressLine.textContent = address;
+            button.append(addressLine);
+          }
+
+          if (previousName.trim() !== "") {
+            const previousLine = document.createElement("span");
+            previousLine.className = "match-previous";
+            previousLine.textContent = `Previous name: ${previousName}`;
+            button.append(previousLine);
+          }
+
+          row.append(button);
+          list.append(row);
+        }
+
+        resultPanel.append(list);
+        resultPanel.hidden = false;
+      }
+
+      async function startRequest(kind, value) {
         if (loading) {
           return;
         }
@@ -719,21 +920,56 @@
         resultPanel.hidden = true;
         resultPanel.classList.remove("is-error");
         resultPanel.replaceChildren();
-        setTraceMessage("Waiting for response.");
+        progressText.textContent =
+          kind === "search"
+            ? "Searching Companies House."
+            : "Reading Companies House and writing to Notion. This takes a few seconds.";
+        setTraceMessage(
+          kind === "search" ? "No trace for searches." : "Waiting for response."
+        );
         progress.hidden = false;
         startTimer();
 
         try {
-          await submitBrief(input.value.trim());
+          if (kind === "search") {
+            await runSearch(value);
+          } else {
+            await runDiligence(value);
+          }
         } catch {
           renderError(null, 0);
-          renderTrace(null);
+
+          if (kind === "search") {
+            setTraceMessage("No trace for searches.");
+          } else {
+            renderTrace(null);
+          }
         } finally {
           stopTimer();
           progress.hidden = true;
           loading = false;
           submitButton.disabled = false;
           form.removeAttribute("aria-busy");
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        if (loading) {
+          return;
+        }
+
+        const raw = input.value;
+        const compact = raw.trim().replace(/\s+/g, "").toUpperCase();
+        const isDigits = /^\d{1,8}$/.test(compact);
+        const isCode = /^[A-Z0-9]{8}$/.test(compact);
+
+        if (isDigits || isCode) {
+          const number = isDigits ? compact.padStart(8, "0") : compact;
+          await startRequest("diligence", number);
+        } else {
+          await startRequest("search", raw.trim());
         }
       });
 
