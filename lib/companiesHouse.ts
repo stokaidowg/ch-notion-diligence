@@ -67,6 +67,25 @@ export interface ChCompanyProfile {
   };
 }
 
+export interface ChCompanySearchItem {
+  company_number?: string;
+  title?: string;
+  company_status?: string;
+  company_type?: string;
+  address_snippet?: string;
+  date_of_creation?: string;
+  snippet?: string;
+}
+
+export interface ChCompanySearchList {
+  items?: ChCompanySearchItem[];
+  items_per_page?: number;
+  kind?: string;
+  page_number?: number;
+  start_index?: number;
+  total_results?: number;
+}
+
 export interface ChOfficer {
   name?: string;
   officer_role?: string;
@@ -414,6 +433,18 @@ export function getCompanyProfile(
 ): Promise<ChResult<ChCompanyProfile>> {
   return chGet<ChCompanyProfile>(
     `/company/${encodeURIComponent(companyNumber)}`,
+  );
+}
+
+export function searchCompanies(
+  query: string,
+  startIndex = 0,
+  itemsPerPage = 10,
+): Promise<ChResult<ChCompanySearchList>> {
+  return chGet<ChCompanySearchList>(
+    `/search/companies?q=${encodeURIComponent(
+      query,
+    )}&items_per_page=${itemsPerPage}&start_index=${startIndex}`,
   );
 }
 
